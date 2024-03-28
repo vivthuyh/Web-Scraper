@@ -1,0 +1,33 @@
+from flask import Flask, render_template, request
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+app = Flask(__name__)
+
+def getData(symbol):
+    headers= {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'}
+    url = f'https://finance.yahoo.com/quote/{symbol}'
+
+    r = requests.get(url, headers=headers)
+
+    soup = BeautifulSoup(r.text, 'html.parser')
+
+    stock = {
+        'company': soup.find('h1', {'class': 'D(ib) Fz(18px)'}).text,
+        'price': soup.find('div', {'class': 'D(ib) Mend(20px)'}).find_all('fin-streamer')[0].text,
+        'change': soup.find('div', {'class': 'D(ib) Mend(20px)'}).find_all('fin-streamer')[1].text,
+        'percent': soup.find('div', {'class': 'D(ib) Mend(20px)'}).find_all('fin-streamer')[2].text 
+    }
+    return stock
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        stocks = request.form.get('stocks').upper().split(',')
+        stock_data = [getData(symbol.strip()) for symbol in stocks]
+        return render_template('index.html', data=stock_data)
+    return render_template('index.html', data=None)
+
+if __name__ == '__main__':
+    app.run(debug=True)
